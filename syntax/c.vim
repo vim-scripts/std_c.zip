@@ -1,9 +1,9 @@
 " Vim syntax file
 " Language:     Standard C (C89, C94, and C99)
-" Maintainer:   Mike Williams <mrw@netcomuk.co.uk>
+" Maintainer:   Mike Williams <mrw@eandem.co.uk>
 " Filenames:    *.c,*.h
-" Last Change:  19th May 2003
-" URL:          http://www.netcomuk.co.uk/~mrw/vim/syntax
+" Last Change:  3rd September 2003
+" URL:          http://www.eandem.co.uk/~mrw/vim/syntax
 "
 " Notes:
 " See supplied help file on configuring and using this syntax highlight file. 
@@ -120,6 +120,9 @@
 " 10.4 Allow \ to continue C++ style one line comments! 
 " 10.4a Fix bug in highlighting [...[...]...]
 " 10.5 Oops. no such token as ~= - now an error to help the unsuspecting.
+" 10.6 Scanlist can have a terminating '-'.
+" 10.7 Fix bugs in 10.6 changes for C94 scanlists (wide char strings)
+" 10.8 Fix highlighting of pre-C99 #pragma statements.
 
 " TODO
 " 1. Add #if 0/1 comment highlighting
@@ -360,7 +363,7 @@ if !exists("c_no_cformat")
   syn match       cFormatError      display contained "%[^"]"
   syn match       cFormatError      display contained "%\""me=e-1
   " Catch implementation defined scanlists
-  syn match       cFormatError      display contained "%\*\=\(0*[1-9]\d*\)\=\[\(\^.\|[^^]\)[^]]*-[^]]*\]"
+  syn match       cFormatError      display contained "%\*\=\(0*[1-9]\d*\)\=\[\(\^.\|[^^]\)[^]-]*-[^]]*-\=\]"
 
   " octal and hex print formats (can have precision and h or l size specifier)
   syn match       cPrintFormat      display contained "%[-+0 #]*\(\*\|\d\+\)\=\(\.\(\*\|\d*\)\)\=[hl]\=[oxX]"
@@ -382,7 +385,7 @@ if !exists("c_no_cformat")
   " fp scan formats
   syn match       cScanFormat       display contained "%\*\=\(0*[1-9]\d*\)\=[lL]\=[eEfgG]"
   " char string scan format
-  syn match       cScanFormat       display contained "%\*\=\(0*[1-9]\d*\)\=\[\(\^.\|[^^]\)[^]-]*\]"
+  syn match       cScanFormat       display contained "%\*\=\(0*[1-9]\d*\)\=\[\(\^.\|[^^]\)[^]-]*-\=\]"
   " character, string and pointer scan formats
   syn match       cScanFormat       display contained "%\*\=\(0*[1-9]\d*\)\=[csp]"
 
@@ -392,8 +395,8 @@ if !exists("c_no_cformat")
     " C94 has new format codes for wide chars and strings (no 0 or # flags)
     syn match     c94PrintFormat    display contained "%[-]*\(\*\|[1-9]\d*\)\=\(\.\(\*\|\d*\)\)\=ls"
     syn match     c94PrintFormat    display contained "%[-]*\(\*\|[1-9]\d*\)\=lc"
-    syn match     cFormatError      display contained "%\*\=\(0*[1-9]\d*\)\=l\[\(\^.\|[^^]\)[^]]*-[^]]*\]"
-    syn match     c94ScanFormat     display contained "%\*\=\(0*[1-9]\d*\)\=l\[\(\^.\|[^^]\)[^]-]*\]"
+    syn match     cFormatError      display contained "%\*\=\(0*[1-9]\d*\)\=l\[\(\^.\|[^^]\)[^]-]*-[^]]*-\=\]"
+    syn match     c94ScanFormat     display contained "%\*\=\(0*[1-9]\d*\)\=l\[\(\^.\|[^^]\)[^]-]*-\=\]"
     syn match     c94ScanFormat     display contained "%\*\=\(0*[1-9]\d*\)\=l[cs]"
     syn cluster   cFormat           add=c94PrintFormat,c94ScanFormat
   endif
@@ -623,7 +626,7 @@ syn region        cPreProc          start="^\s*\(%:\|#\)\s*error\>" skip="\\$" e
 
 " Pragma
 syn match         cPPPragma         transparent contained "^\s*\(%:\|#\)\s*pragma\>" contains=cDigraph
-syn region        cPragma           start="^\s*\(%:\|#\)\s*pragma\>" skip="\\$" end="$" contains=cPPMisc,@cPPTokens,@cPPCommon
+syn region        cPragma           start="^\s*\(%:\|#\)\s*pragma\>" skip="\\$" end="$" contains=cPPPragma,@cPPTokens,@cPPCommon
 if exists("c_C99")
   " C99 has a fixed form of #pragma also.
   syn match       c99PPPragmaError  contained "[^[:space:]]\+"
@@ -637,7 +640,7 @@ endif
 if exists("c_c_vim_compatible")
   " Some compilers may support these pp commands
   syn match       cPPWarn           transparent contained "^\s*\(%:\|#\)\s*\(warn\|warning\)\>" contains=cDigraph
-  syn region      cPreProc          start="^\s*\(%:\|#\)\s*\(warn\|warning\)\>" skip="\\$" end="$" contains=cPPMisc,@cPPTokens,@cPPCommon
+  syn region      cPreProc          start="^\s*\(%:\|#\)\s*\(warn\|warning\)\>" skip="\\$" end="$" contains=cPPWarn,@cPPTokens,@cPPCommon
 endif
 
 

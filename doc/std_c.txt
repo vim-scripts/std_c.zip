@@ -1,4 +1,4 @@
-*std_c.txt*	Standard C Syntax Highlighting, V10.5
+*std_c.txt*	Standard C Syntax Highlighting, V10.8
 
 							*std_c*
 The Standard C syntax file aims to help you develop Standard C programs by
@@ -492,10 +492,10 @@ You can find updates to the Standard C syntax file at either VIMonline at: >
     http://vim.sourceforge.net/ 
 
 or on my web site at: >
-    http://www.netcomuk.co.uk/~mrw/vim/
+    http://www.eandem.co.uk/~mrw/vim/
 
 Please send any bug-reports or suggestions for improvement to: >
-    mrw@netcomuk.co.uk
+    mrw@eandem.co.uk
 
 Happy Standard C programming!
 
