@@ -2,7 +2,7 @@
 " Language:     Standard C (C89, C94, and C99)
 " Maintainer:   Mike Williams <mrw@eandem.co.uk>
 " Filenames:    *.c,*.h
-" Last Change:  3rd September 2003
+" Last Change:  8th August 2004
 " URL:          http://www.eandem.co.uk/~mrw/vim/syntax
 "
 " Notes:
@@ -123,6 +123,10 @@
 " 10.6 Scanlist can have a terminating '-'.
 " 10.7 Fix bugs in 10.6 changes for C94 scanlists (wide char strings)
 " 10.8 Fix highlighting of pre-C99 #pragma statements.
+"
+" 11.0 Allow #include to specify PP names as well as "" and <> strings. 
+" 11.1 Fix highlighting nested C comments.
+" 11.2 Fix highlighting of system include file names.
 
 " TODO
 " 1. Add #if 0/1 comment highlighting
@@ -521,12 +525,12 @@ if exists("c_comment_strings")
     syn cluster   cCommentGroup     add=cTime,cDate
   endif
 endif
-if exists("c_warn_nested_comment")
+if exists("c_warn_nested_comments")
   " Catch start of C comments within C comments.
   syn match       cCommentStartError contained "/\*"
 endif
 syn match         cCommentDelim     contained "/\*\|\*/"
-syn region        cComment          keepend start="/\*" end="\*/" contains=cCommentDelim,cCommentString,cCharacterNoError,@cCommentGroup,cCommentStartError
+syn region        cComment          keepend matchgroup=cCommentDelim start="/\*" end="\*/" contains=cCommentString,cCharacterNoError,@cCommentGroup,cCommentStartError
 syn match         cCommentError     "\*/"
 if exists("c_cpp_comments") || (exists("c_C99") && !exists("c_C99_warn"))
   if exists("c_comment_strings")
@@ -535,7 +539,7 @@ if exists("c_cpp_comments") || (exists("c_C99") && !exists("c_C99_warn"))
   endif
   syn region      cComment          start="//" skip="\\$" end="$" contains=cComment2String,cCharacterNoError,@cCommentGroup,cPPLineJoin,cPPLineJoinError
 else
-  syn region      cCommentError     start="//" skip="\\.*$" end="$"
+  syn region      cCommentError     start="//" skip="\\$" end="$"
 endif
 syn sync ccomment cComment
 
@@ -577,7 +581,7 @@ syn cluster       cPPCommon         contains=cComment,cCommentError,cPPSpaceErro
 syn match         cPPInclude        transparent contained "^\s*\(%:\|#\)\s*include\>" contains=cDigraph
 syn region        cPPIncludeFile    contained start=+"+ skip=+\\"+ end=+"+ contains=cPPLineJoin,cPPLineJoinError
 syn match         cPPIncludeFile    contained "<[^>]*>"
-syn match         cInclude          display "^\s*\(%:\|#\)\s*include\>\s*["<]" contains=cPPSpaceError,cPPInclude,cPPIncludeFile
+syn match         cInclude          display "^\s*\(%:\|#\)\s*include\>\s*.*$" contains=cPPSpaceError,cPPInclude,cPPIncludeFile
 
 " Conditional code
 syn match         cPPIf             transparent contained "^\s*\(%:\|#\)\s*\(if\|ifdef\|ifndef\|elif\|else\|endif\)\>" contains=cDigraph

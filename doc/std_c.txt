@@ -1,4 +1,4 @@
-*std_c.txt*	Standard C Syntax Highlighting, V10.8
+*std_c.txt*	Standard C Syntax Highlighting, V11.2
 
 							*std_c*
 The Standard C syntax file aims to help you develop Standard C programs by
@@ -440,13 +440,17 @@ C syntax file so will use the default c.vim instead: >
 
     Language	    Syntax file
 ~
+    Ch		    ch.vim
     C++		    cpp.vim
+    CWEB  	    cweb.vim
     Cynlib	    cynlib.vim
     ESQL-C	    esqlc.vim
     Kimwitu[++]	    kwt.vim
     Lex		    lex.vim
+    Man page	    man.vim
     Objective C	    objc.vim
     Objective C++   objcpp.vim
+    PCCTS	    pccts.vim
     Perl XS	    xs.vim
     Rpcgen	    rpcgen.vim
     Splint	    splint.vim
