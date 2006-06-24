@@ -1,4 +1,4 @@
-*std_c.txt*	Standard C Syntax Highlighting, V11.2
+*std_c.txt*	Standard C Syntax Highlighting, V12.5
 
 							*std_c*
 The Standard C syntax file aims to help you develop Standard C programs by
@@ -172,15 +172,21 @@ c_comment_date_time	Highlight various date and time formats in comments.
 			    12-Jan-2002
 			    Jan 12 2002
 			    2002/01/12
+c_no_comment_fold	Do not fold comments when 'foldmethod' is set to
+			"syntax".
 c_warn_nested_comments	Highlight the start of a C comment within a C comment.
 			That is sequences of /* within /* */ - some compilers
 			don't like this.
 
 Characters~
-c_warn_8bitchars	Highlight characters defined with a hex or octal value
-			with the top bit set as an error.  Since characters
-			can be signed or unsigned it is implementation defined
-			as to how the value is interpreted.
+c_warn_8bitchars	Highlight as an error characters in strings or integer
+			character constants defined with a hex or octal value
+			where the top bit is set.  As the char type can be
+			signed or unsigned according to the compiler, the
+			interpretation of the 8-bit value is not portable.
+			The following example uses a non-portable 8-bit
+			character: >
+			    char ch = '\xa5';
 c_warn_multichar	Highlight multiple character integer constants as
 			errors as the order that the characters are stored in
 			memory is implementation defined.  In the following
@@ -290,6 +296,9 @@ c_no_bracket_error	Do not highlight errors within square brackets ([]).
 			Only define this variable if you have valid C code
 			within brackets that is being highlighted as an error
 			that you know is not.
+c_no_curly_error	Do not highlight braces within parentheses as an
+			error.  Only applies when the language version is C89
+			or C94.
 c_syntax_for_h		Use this syntax file to highlight .h files.
 			This variable should be defined otherwise .h files are
 			highlighted as if they were C++.
@@ -304,7 +313,8 @@ c_minlines		Sets the number of lines to try and resynchronise
 Unsupported ~
 c_no_if0		Highlighting of blocks of code surrounded by #if 0 as
 			comments is not supported.
-
+c_no_if0_fold		Folding of blocks of code surrounded by #if 0 is not
+			supported.
 Recommended Settings~
 For portable development of Standard C the following variables are recommended
 to be defined in your startup file.  This will set your working version of
@@ -378,7 +388,7 @@ following lines: >
 
 Since cTypedef and cBoolean are already defined they are already in the right
 Contents clusters to be highlighted based on the context.  Plus they are
-already linked to the appropriate highlight colors.
+already linked to the appropriate highlight colours.
 
 2. Highlighting Tag Symbols.~
 Here you want to highlight any identifier symbols that are present in your
@@ -397,14 +407,14 @@ different C code contexts - parenthese, macros, and conditional operator.  >
     syn cluster	    cConditionalContents add=cTag
 
 Finally, you need to link the new C syntax group to a standard group, or
-define the colors the use explicitly (see |:highlight|). >
+define the colours the use explicitly (see |:highlight|). >
 
     hi link         cTag	    Tag
 
 3. Highlighting source control fields in comments.~
 In this example you want to highlight source control keywords in comments.
 The example assumes a RCS based source control systems where keywords start
-and end with a $ character (e.g. $Date: 2002/02/01 12:15:30 $).  The following
+and end with a $ character (e.g. $Date: 2005/02/24 13:50:30 $).  The following
 lines will highlight RCS fields using the PreProc syntax group. >
 
     syn match	    cRCSField	    contained "\$\u.*\$"
@@ -442,7 +452,6 @@ C syntax file so will use the default c.vim instead: >
 ~
     Ch		    ch.vim
     C++		    cpp.vim
-    CWEB  	    cweb.vim
     Cynlib	    cynlib.vim
     ESQL-C	    esqlc.vim
     Kimwitu[++]	    kwt.vim
@@ -493,7 +502,7 @@ Ideas and additions came from the following, in no particular order;
 SUPPORT							*std_c-support*
 
 You can find updates to the Standard C syntax file at either VIMonline at: >
-    http://vim.sourceforge.net/ 
+    http://www.vim.org/ 
 
 or on my web site at: >
     http://www.eandem.co.uk/~mrw/vim/

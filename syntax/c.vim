@@ -2,7 +2,7 @@
 " Language:     Standard C (C89, C94, and C99)
 " Maintainer:   Mike Williams <mrw@eandem.co.uk>
 " Filenames:    *.c,*.h
-" Last Change:  8th August 2004
+" Last Change:  24th June 2006
 " URL:          http://www.eandem.co.uk/~mrw/vim/syntax
 "
 " Notes:
@@ -66,7 +66,7 @@
 "
 " 7.1 Highlight floats of the form 10f as errors - invalid Standard C!
 " 7.2 Sort out C99 reserved function name warnings.
-" 7.3 Add C99 printf/scanf intger format spcicifers.
+" 7.3 Add C99 printf/scanf intger format specifiers.
 " 7.4 Change references from ANSI to Standard.
 " 7.5 Fix C94 & C99 error highlighting.
 " 7.6 Add support for c_gnu in VIM compatible mode, else warnings!
@@ -107,7 +107,7 @@
 " 9.1 Many clarifications to the documentation.
 " 9.2 Simplify effect of setting VIM C compatible mode. 
 " 9.3 Warn on nesting of start of /* comments.
-" 9.4 Fix flagging reserved C99 libray function names, use me not he. 
+" 9.4 Fix flagging reserved C99 library function names, use me not he. 
 " 9.5 Redo space error highlighting as per VIM. 
 " 9.6 When syntax is other than C, use standard c.vim.
 " 9.7 Use unlet! instead of unlet.
@@ -127,6 +127,15 @@
 " 11.0 Allow #include to specify PP names as well as "" and <> strings. 
 " 11.1 Fix highlighting nested C comments.
 " 11.2 Fix highlighting of system include file names.
+" 11.3 Argh! - fix highlighting of comments et al in #include statements
+" 11.4 Error highlight character constants in hex/octal with top bit set.
+"
+" 12.0 Add missing C99 F printf float format specifier.
+" 12.1 Add VIM 7 spelling group to comments and strings.
+" 12.2 Allow braces for C99 compound literals within parens.
+" 12.3 Add comment folding controllable by c_no_comment_fold.
+" 12.4 Make highlighting of braces in parens as errors controllable.
+" 12.5 Add syntax based folding of statement blocks as per Bram's.
 
 " TODO
 " 1. Add #if 0/1 comment highlighting
@@ -139,12 +148,8 @@ if &syntax != 'c'
   finish
 endif
 
-
-" For version 5.x: Clear all syntax items
-" For version 6.x: Quit when a syntax file was already loaded
-if version < 600
-  syntax clear
-elseif exists("b:current_syntax")
+" Quit when a (custom) syntax file was already loaded
+if exists("b:current_syntax")
   finish
 endif
 
@@ -317,7 +322,7 @@ if !exists("c_no_names")
 endif
 
 
-" C Character constants
+" C Integer character constants
 " Escaped characters
 syn match         cEscapeCharError  display contained "\\[^'\"?\\abfnrtv]"
 syn match         cEscapeChar       display contained "\\['\"?\\abfnrtv]"
@@ -326,10 +331,19 @@ if exists("c_c_vim_compatible") && exists("c_gnu")
 endif
 " Octal characters
 syn match         cOctalChar        display contained "\\\o\{1,3}"
+syn cluster       cOCtalCharContents contains=cOctalChar
+syn match         cOctalCharError   display contained "\\\(2\|3\)\o\{1,2}"
 " Hex characters
 syn match         cHexChar          display contained "\\x\x\+"
+syn cluster       cHexCharContents  contains=cHexChar
+syn match         cHexCharError     display contained "\\x[89a-f]\x\+"
+if exists("c_warn_8bitchars")
+  " Octal and hex chars in integer character contents not portable if top bit set.
+  syn cluster     cHexCharContents  add=cHexCharError
+  syn cluster     cOctalCharContents add=cOctalCharError
+endif
 " Useful groupings of character types
-syn cluster       cSpecialChar      contains=cEscapeCharError,cEscapeChar,cOctalChar,cHexChar
+syn cluster       cSpecialChar      contains=cEscapeCharError,cEscapeChar,@cOctalCharContents,@cHexCharContents
 syn cluster       cSpecialCharNoError contains=cEscapeChar,cOctalChar,cHexChar
 if (exists("c_c_vim_compatible") || exists("c_C99")) && !exists("c_no_utf")
   " C99 universal chars - hmm, can appear anywhere!
@@ -344,18 +358,16 @@ else
   syn match       cCharacterError   "L\='\(\\.\|.\)\{-2,}'"
 endif
 syn match         cCharacter        "L\='\(\\.\|[^\']\)'" contains=cEscapeCharError,cEscapeChar
-syn match         cCharacter        display "L\='\\x\x\x\='" contains=cHexChar
-syn match         cCharacter        display "L\='\\\o\{1,3}'" contains=cOctalChar
+syn match         cCharacter        display "L\='\\x\x\x\='" contains=@cHexCharContents
+syn match         cCharacter        display "L\='\\\o\{1,3}'" contains=@cOctalCharContents
 syn match         cCharacterError   display "L\='\([^']*$\|'\)"
 syn match         cCharacterNoError display contained "L\='\(\\.\|.\)\{-}'" contains=@cSpecialCharNoError
 
 
 " C String constants
-syn cluster       cStringContents   contains=@cSpecialChar,cPPLineJoin
+syn cluster       cStringContents   contains=@cSpecialChar,cPPLineJoin,@Spell
 if exists("c_warn_8bitchars")
   " Octal and hex chars in strings not portable if top bit set.
-  syn match       cOctalCharError   display contained "\\\(2\|3\)\o\{1,2}"
-  syn match       cHexCharError     display contained "\\x[89a-f]\x\+"
   syn cluster     cStringContents   add=cHexCharError,cOctalCharError
 endif
 syn cluster       cFormat           contains=cEmpty
@@ -410,7 +422,7 @@ if !exists("c_no_cformat")
     syn match     c99PrintFormat    display contained "%[-+0 ]*\(\*\|\d\+\)\=\(\.\(\*\|\d*\)\)\=\(hh\|ll\|j\|z\|t\)[diu]"
     " fp conversion has new format specifier, and allows l length modifier for C89 ones
     syn match     c99PrintFormat    display contained "%[-+0 #]*\(\*\|\d\+\)\=\(\.\(\*\|\d*\)\)\=l[eEfgG]"
-    syn match     c99PrintFormat    display contained "%[-+0 #]*\(\*\|\d\+\)\=\(\.\(\*\|\d*\)\)\=[lL]\=[aA]"
+    syn match     c99PrintFormat    display contained "%[-+0 #]*\(\*\|\d\+\)\=\(\.\(\*\|\d*\)\)\=[lL]\=[aAF]"
     " number chars so has new length modifiers
     syn match     c99PrintFormat    display contained "%[-]*\(\*\|[1-9]\d*\)\=\(hh\|j\|z\|t\)n"
 
@@ -530,14 +542,22 @@ if exists("c_warn_nested_comments")
   syn match       cCommentStartError contained "/\*"
 endif
 syn match         cCommentDelim     contained "/\*\|\*/"
-syn region        cComment          keepend matchgroup=cCommentDelim start="/\*" end="\*/" contains=cCommentString,cCharacterNoError,@cCommentGroup,cCommentStartError
+if exists("c_no_comment_fold")
+  syn region      cComment          keepend matchgroup=cCommentDelim start="/\*" end="\*/" contains=cCommentString,cCharacterNoError,@cCommentGroup,cCommentStartError,@Spell
+else
+  syn region      cComment          keepend matchgroup=cCommentDelim start="/\*" end="\*/" contains=cCommentString,cCharacterNoError,@cCommentGroup,cCommentStartError,@Spell fold
+endif
 syn match         cCommentError     "\*/"
 if exists("c_cpp_comments") || (exists("c_C99") && !exists("c_C99_warn"))
   if exists("c_comment_strings")
     " Unfortunately this doesn't very well work for // type of comments :-(
     syn region    cComment2String   contained start=+L\="+ skip=+\\"+ end=+"+ end="$" contains=@cCommentStringContents
   endif
-  syn region      cComment          start="//" skip="\\$" end="$" contains=cComment2String,cCharacterNoError,@cCommentGroup,cPPLineJoin,cPPLineJoinError
+  if exists("c_no_comment_fold")
+    syn region    cComment          start="//" skip="\\$" end="$" contains=cComment2String,cCharacterNoError,@cCommentGroup,cPPLineJoin,cPPLineJoinError,@Spell
+  else
+    syn region    cComment          start="//" skip="\\$" end="$" contains=cComment2String,cCharacterNoError,@cCommentGroup,cPPLineJoin,cPPLineJoinError,@Spell fold
+  endif
 else
   syn region      cCommentError     start="//" skip="\\$" end="$"
 endif
@@ -581,7 +601,7 @@ syn cluster       cPPCommon         contains=cComment,cCommentError,cPPSpaceErro
 syn match         cPPInclude        transparent contained "^\s*\(%:\|#\)\s*include\>" contains=cDigraph
 syn region        cPPIncludeFile    contained start=+"+ skip=+\\"+ end=+"+ contains=cPPLineJoin,cPPLineJoinError
 syn match         cPPIncludeFile    contained "<[^>]*>"
-syn match         cInclude          display "^\s*\(%:\|#\)\s*include\>\s*.*$" contains=cPPSpaceError,cPPInclude,cPPIncludeFile
+syn match         cInclude          display "^\s*\(%:\|#\)\s*include\>\s*.*$" contains=cPPSpaceError,cPPInclude,cPPIncludeFile,@cPPCommon
 
 " Conditional code
 syn match         cPPIf             transparent contained "^\s*\(%:\|#\)\s*\(if\|ifdef\|ifndef\|elif\|else\|endif\)\>" contains=cDigraph
@@ -687,7 +707,10 @@ if !exists("c_no_bracket_error")
   endif
   syn match       cBracketError     "]\|%>" contains=cDigraph
 endif
-syn match         cErrBraceInParen  contained "{\|}\|<%\|%>" contains=cDigraph
+if (!exists("c_C99") || exists("c_C99_warn")) && !exists("c_no_curly_error")
+  " Braces not allowed in parenthesise pre C99
+  syn match       cErrBraceInParen  contained "{\|}\|<%\|%>" contains=cDigraph
+endif
 syn region        cParen            transparent start='(' end=')' contains=@cParenContents,cParen,cBracket,cErrBraceInParen,cErrBracketInParen
 syn cluster       cDefineParenContents contains=@cParenContents,cDefineParen,cBracket,cErrBracketInParen
 if !exists("c_c_vim_compatible") || !exists("c_gnu")
@@ -696,6 +719,8 @@ endif
 syn region        cDefineParen      contained transparent start='(' end=')' contains=@cDefineParenContents
 syn match         cParenError       ")"
 
+" Syntax folding of statement blocks
+syn region        cBlock            start="{" end="}" transparent fold
 
 " C typedefs
 syn cluster       cTypedef          contains=cEmpty 
@@ -899,263 +924,254 @@ exec "syn sync ccomment cComment minlines=" . b:c_minlines
 
 
 " Define the default highlighting.
-" For version 5.7 and earlier: only when not done already
-" For version 5.8 and later: only when an item doesn't have highlighting yet
-if version >= 508 || !exists("did_c_syntax_inits")
-  if version < 508
-    let did_c_syntax_inits = 1
-    command -nargs=+ HiLink hi link <args>
-  else
-    command -nargs=+ HiLink hi def link <args>
-  endif
+" Only used when an item doesn't have highlighting yet
 
-  HiLink cEmpty                 Normal
-  HiLink cTodo                  Todo
+hi def link cEmpty                 Normal
+hi def link cTodo                  Todo
 
-  HiLink cStatement             Statement
-  HiLink c89Statement           cStatement
-  if exists("c_c_vim_compatible")
-    HiLink cKRStatement         cStatement
-    HiLink cKRStorageClass      cStorageClass
-  else
-    HiLink cKRStatement         cError
-    HiLink cKRStorageClass      cError
-  endif
-  HiLink cLabel                 Label
-  HiLink cUserLabel             cLabel
-  HiLink cConditional           Conditional
-  HiLink cRepeat                Repeat
+hi def link cStatement             Statement
+hi def link c89Statement           cStatement
+if exists("c_c_vim_compatible")
+  hi def link cKRStatement         cStatement
+  hi def link cKRStorageClass      cStorageClass
+else
+  hi def link cKRStatement         cError
+  hi def link cKRStorageClass      cError
+endif
+hi def link cLabel                 Label
+hi def link cUserLabel             cLabel
+hi def link cConditional           Conditional
+hi def link cRepeat                Repeat
 
-  HiLink cOperator              Operator
-  HiLink cSizeofOperator        cOperator
-  HiLink cMathOperator          cOperator
-  HiLink cPointerOperator       cOperator
-  HiLink cLogicalOperator       cOperator
-  HiLink cBinaryOperator        cOperator
-  if exists("c_conditional_is_operator")
-    HiLink cConditionalOperator cOperator
-  else
-    HiLink cConditionalOperator cConditional
-  endif
+hi def link cOperator              Operator
+hi def link cSizeofOperator        cOperator
+hi def link cMathOperator          cOperator
+hi def link cPointerOperator       cOperator
+hi def link cLogicalOperator       cOperator
+hi def link cBinaryOperator        cOperator
+if exists("c_conditional_is_operator")
+  hi def link cConditionalOperator cOperator
+else
+  hi def link cConditionalOperator cConditional
+endif
 
-  HiLink cType                  Type
-  HiLink c89Type                cType
-  HiLink cTypedef               Typedef
-  HiLink c89Typedef             cTypedef
-  if exists("c_c_vim_compatible")
-    HiLink cVIMTypedef          cTypedef
-  endif
-  HiLink cStructure             Structure
-  HiLink cStructureType         cStructure
-  HiLink cStorageClass          StorageClass
-  HiLink c89StorageClass        cStorageClass
-  HiLink cIdentifier            Identifier
-  HiLink c89Identifier          cIdentifier
-  HiLink cEllipses              c89Identifier
-  HiLink cFunction              Function
-  HiLink c89Function            cFunction
+hi def link cType                  Type
+hi def link c89Type                cType
+hi def link cTypedef               Typedef
+hi def link c89Typedef             cTypedef
+if exists("c_c_vim_compatible")
+  hi def link cVIMTypedef          cTypedef
+endif
+hi def link cStructure             Structure
+hi def link cStructureType         cStructure
+hi def link cStorageClass          StorageClass
+hi def link c89StorageClass        cStorageClass
+hi def link cIdentifier            Identifier
+hi def link c89Identifier          cIdentifier
+hi def link cEllipses              c89Identifier
+hi def link cFunction              Function
+hi def link c89Function            cFunction
 
-  if exists("c_char_is_integer")
-    HiLink cCharacter           cInteger
-  else
-    HiLink cCharacter           Character
-  endif
-  HiLink cMultiCharacter        cCharacter
-  HiLink cCharacterNoError      cCharacter
-  HiLink cSpecialChar           SpecialChar
-  HiLink cEscapeChar            cSpecialChar
-  HiLink cOctalChar             cSpecialChar
-  HiLink cHexChar               cSpecialChar
-  HiLink cString                String
-  HiLink cSpecial               cSpecialChar
-  HiLink cFormat                cSpecial
-  HiLink cPrintFormat           cFormat
-  HiLink cScanFormat            cFormat
+if exists("c_char_is_integer")
+  hi def link cCharacter           cInteger
+else
+  hi def link cCharacter           Character
+endif
+hi def link cMultiCharacter        cCharacter
+hi def link cCharacterNoError      cCharacter
+hi def link cSpecialChar           SpecialChar
+hi def link cEscapeChar            cSpecialChar
+hi def link cOctalChar             cSpecialChar
+hi def link cHexChar               cSpecialChar
+hi def link cString                String
+hi def link cSpecial               cSpecialChar
+hi def link cFormat                cSpecial
+hi def link cPrintFormat           cFormat
+hi def link cScanFormat            cFormat
 
-  HiLink cNumber                Number
-  HiLink cInteger               cNumber
-  HiLink cDecimal               cInteger
-  HiLink cOctal                 cInteger
-  HiLink cOctalZero             PreProc
-  HiLink cHex                   cInteger
-  HiLink cBoolean               Boolean
-  HiLink cFloat                 Float
-  HiLink c89Float               cFloat
+hi def link cNumber                Number
+hi def link cInteger               cNumber
+hi def link cDecimal               cInteger
+hi def link cOctal                 cInteger
+hi def link cOctalZero             PreProc
+hi def link cHex                   cInteger
+hi def link cBoolean               Boolean
+hi def link cFloat                 Float
+hi def link c89Float               cFloat
 
-  HiLink cConstant              Constant
-  HiLink c89Constant            cConstant
+hi def link cConstant              Constant
+hi def link c89Constant            cConstant
 
-  HiLink cComment               Comment
-  HiLink cCommentDelim          cComment
-  HiLink cCommentString         cString
-  HiLink cComment2String        cString
-  HiLink cCommentSkip           cComment
-  HiLink cTime                  cNumber
-  HiLink cDate                  cString
+hi def link cComment               Comment
+hi def link cCommentDelim          cComment
+hi def link cCommentString         cString
+hi def link cComment2String        cString
+hi def link cCommentSkip           cComment
+hi def link cTime                  cNumber
+hi def link cDate                  cString
 
-  HiLink cError                 Error
-  HiLink cCharsetError          cError
-  HiLink cStatementError        cError
-  HiLink cStorageClassError     cError
-  HiLink cOperatorError         cError
-  HiLink cOctalError            cError
-  HiLink cFloatError            cError
-  HiLink cParenError            cError
-  HiLink cBracketError          cError
-  HiLink cErrBraceInParen       cError
-  HiLink cErrBracketInParen     cError
-  HiLink cErrInBracket          cError
-  HiLink cCommentStartError     cError
-  HiLink cCommentError          cError
-  HiLink cTrailSpaceError       cError
-  HiLink cMixedSpaceError       cError
-  HiLink cCharacterError        cError
-  HiLink cEscapeCharError       cError
-  HiLink cOctalCharError        cError
-  HiLink cHexCharError          cError
-  HiLink cLogicalOperatorError  cError
-  HiLink cBinaryOperatorError   cError
-  HiLink cTrigraphError         cError
-  HiLink cFormatError           cError
-  HiLink cHexError              cError
-  HiLink cEllipsesError         cError
+hi def link cError                 Error
+hi def link cCharsetError          cError
+hi def link cStatementError        cError
+hi def link cStorageClassError     cError
+hi def link cOperatorError         cError
+hi def link cOctalError            cError
+hi def link cFloatError            cError
+hi def link cParenError            cError
+hi def link cBracketError          cError
+if !exists("c_C99") || exists("c_C99_warn")
+  hi def link cErrBraceInParen     cError
+endif
+hi def link cErrBracketInParen     cError
+hi def link cErrInBracket          cError
+hi def link cCommentStartError     cError
+hi def link cCommentError          cError
+hi def link cTrailSpaceError       cError
+hi def link cMixedSpaceError       cError
+hi def link cCharacterError        cError
+hi def link cEscapeCharError       cError
+hi def link cOctalCharError        cError
+hi def link cHexCharError          cError
+hi def link cLogicalOperatorError  cError
+hi def link cBinaryOperatorError   cError
+hi def link cTrigraphError         cError
+hi def link cFormatError           cError
+hi def link cHexError              cError
+hi def link cEllipsesError         cError
 
-  HiLink cPreProc               PreProc
-  HiLink cPPEmptyLine           cPreProc
-  HiLink cPPLineJoin            cPreProc
-  HiLink cInclude               Include
-  HiLink cPPIncludeFile         cString
-  HiLink cDefine                Define
-  HiLink cUndef                 cDefine
-  HiLink cPragma                cPreProc
-  HiLink cMacro                 Macro
-  HiLink cCMacro                cMacro
-  HiLink c89Macro               cMacro
-  HiLink cPreCondit             PreCondit
-  HiLink cLine                  PreProc
-  HiLink cPPLineNumber          cInteger
-  HiLink cPPOperator            cOperator
-  HiLink cPPTokenOperator       cPPOperator
-  HiLink cPPPragmaOperator      cPPOperator
-  HiLink cPPOut                 cComment
-  HiLink cPPOut2                cPPOut
-  HiLink cPPSkip                cPPOut
+hi def link cPreProc               PreProc
+hi def link cPPEmptyLine           cPreProc
+hi def link cPPLineJoin            cPreProc
+hi def link cInclude               Include
+hi def link cPPIncludeFile         cString
+hi def link cDefine                Define
+hi def link cUndef                 cDefine
+hi def link cPragma                cPreProc
+hi def link cMacro                 Macro
+hi def link cCMacro                cMacro
+hi def link c89Macro               cMacro
+hi def link cPreCondit             PreCondit
+hi def link cLine                  PreProc
+hi def link cPPLineNumber          cInteger
+hi def link cPPOperator            cOperator
+hi def link cPPTokenOperator       cPPOperator
+hi def link cPPPragmaOperator      cPPOperator
+hi def link cPPOut                 cComment
+hi def link cPPOut2                cPPOut
+hi def link cPPSkip                cPPOut
 
-  HiLink cPPError               cError
-  HiLink cPreProcError          cPPError
-  HiLink cPPLineNumberError     cPPError
-  HiLink cPPSpaceError          cPPError
-  HiLink cPPLineJoinError       cPPError
-  HiLink cPPWarnError           cPPError
-  HiLink cPPPragmaError         cPPError
+hi def link cPPError               cError
+hi def link cPreProcError          cPPError
+hi def link cPPLineNumberError     cPPError
+hi def link cPPSpaceError          cPPError
+hi def link cPPLineJoinError       cPPError
+hi def link cPPWarnError           cPPError
+hi def link cPPPragmaError         cPPError
 
-  if exists("c_vms")
-    HiLink cVMSIdentifier       cIdentifier
-    HiLink cVMSFunction         cFunction
-    HiLink cVMSMacro            cMacro
-  endif
+if exists("c_vms")
+  hi def link cVMSIdentifier       cIdentifier
+  hi def link cVMSFunction         cFunction
+  hi def link cVMSMacro            cMacro
+endif
 
-  if exists("c_cpp_warn")
-    HiLink cCPPError            cError
-  endif
+if exists("c_cpp_warn")
+  hi def link cCPPError            cError
+endif
 
-  if exists("c_warn_digraph")
-    HiLink cDigraph             cError
-  endif
+if exists("c_warn_digraph")
+  hi def link cDigraph             cError
+endif
 
-  if exists("c_C94")
-    if !exists("c_C94_warn")
-      HiLink c94Macro           cMacro
-      HiLink c94Constant        cConstant
-      HiLink c94PrintFormat     cPrintFormat
-      HiLink c94ScanFormat      cScanFormat
-      HiLink c94Typedef         cTypedef
-      HiLink c94PPTokenOperator cPPOperator
-      HiLink c94PPInclude       cInclude
-
-    else
-      HiLink cC94Error          cError
-      HiLink c94Macro           cC94Error
-      HiLink c94Constant        cC94Error
-      HiLink c94PrintFormat     cC94Error
-      HiLink c94ScanFormat      cC94Error
-      HiLink c94Typedef         cC94Error
-      HiLink c94PPTokenOperator cC94Error
-      HiLink c94PPInclude       cC94Error
-    endif
-  endif
-
-  if exists("c_C99")
-    HiLink c99Function          cFunction
-    if !exists("c_C99_warn")
-      HiLink c99Type            cType
-      HiLink c99Typedef         cTypedef
-      HiLink c99StorageClass    cStorageClass
-      HiLink c99Macro           cMacro
-      HiLink c99MacroError      cError
-      HiLink cUniversalChar     cSpecialChar
-      HiLink c99Decimal         cDecimal
-      HiLink c99Hex             cHex
-      HiLink c99OctalError      cOctalError
-      HiLink c99Octal           cOctal
-      HiLink c99Boolean         cBoolean
-      HiLink c99Float           cFloat
-      HiLink c99Constant        cConstant
-      HiLink c99PrintFormat     cPrintFormat
-      HiLink c99ScanFormat      cScanFormat
-      HiLink c99Pragma          cPreProc
-      HiLink c99PPPragmaSTDC    cPreProc
-      HiLink c99PPPragmaOperator cPPOperator
-      HiLink c99PPPragmaError   cPPError
-
-    else
-      HiLink cC99Error          cError
-      HiLink c99Type            cC99Error
-      HiLink c99Typedef         cC99Error
-      HiLink c99StorageClass    cC99Error
-      HiLink c99Macro           cC99Error
-      HiLink c99MacroError      cC99Error
-      HiLink cUniversalChar     cC99Error
-      HiLink c99Decimal         cC99Error
-      HiLink c99Hex             cC99Error
-      HiLink c99OctalError      cC99Error
-      HiLink c99Octal           cC99Error
-      HiLink c99Boolean         cC99Error
-      HiLink c99Float           cC99Error
-      HiLink c99Constant        cC99Error
-      HiLink c99PrintFormat     cC99Error
-      HiLink c99ScanFormat      cC99Error
-      HiLink c99Pragma          cC99Error
-      HiLink c99PPPragmaSTDC    cC99Error
-      HiLink c99PPPragmaOperator cC99Error
-      HiLink c99PPPragmaError   cC99Error
-    endif
-  endif
-
-  if exists("c_c_vim_compatible")
-    if exists("c_gnu")
-      HiLink cGNUType           cType
-      HiLink cGNUStatement      c89Statement
-      HiLink cGNUOperator       cOperator
-      HiLink cGNUStorageClass   cStorageClass
-      HiLink cGNUConstant       cConstant
-    endif
-    if !exists("c_no_utf")
-      HiLink cUniversalChar     cSpecialChar
-    endif
-    HiLink cPosixConstant       cConstant
-    HiLink cMathConstant        cConstant
+if exists("c_C94")
+  if !exists("c_C94_warn")
+    hi def link c94Macro           cMacro
+    hi def link c94Constant        cConstant
+    hi def link c94PrintFormat     cPrintFormat
+    hi def link c94ScanFormat      cScanFormat
+    hi def link c94Typedef         cTypedef
+    hi def link c94PPTokenOperator cPPOperator
+    hi def link c94PPInclude       cInclude
 
   else
-    HiLink cGNUError            cError
-    HiLink cGNUStatement        cGNUError
-    HiLink cGNUOperator         cGNUError
-    HiLink cGNUType             cGNUError
-    HiLink cGNUStorageClass     cGNUError
-    HiLink cGNUConstant         cGNUError
+    hi def link cC94Error          cError
+    hi def link c94Macro           cC94Error
+    hi def link c94Constant        cC94Error
+    hi def link c94PrintFormat     cC94Error
+    hi def link c94ScanFormat      cC94Error
+    hi def link c94Typedef         cC94Error
+    hi def link c94PPTokenOperator cC94Error
+    hi def link c94PPInclude       cC94Error
   endif
+endif
 
-  delcommand HiLink
+if exists("c_C99")
+  hi def link c99Function          cFunction
+  if !exists("c_C99_warn")
+    hi def link c99Type            cType
+    hi def link c99Typedef         cTypedef
+    hi def link c99StorageClass    cStorageClass
+    hi def link c99Macro           cMacro
+    hi def link c99MacroError      cError
+    hi def link cUniversalChar     cSpecialChar
+    hi def link c99Decimal         cDecimal
+    hi def link c99Hex             cHex
+    hi def link c99OctalError      cOctalError
+    hi def link c99Octal           cOctal
+    hi def link c99Boolean         cBoolean
+    hi def link c99Float           cFloat
+    hi def link c99Constant        cConstant
+    hi def link c99PrintFormat     cPrintFormat
+    hi def link c99ScanFormat      cScanFormat
+    hi def link c99Pragma          cPreProc
+    hi def link c99PPPragmaSTDC    cPreProc
+    hi def link c99PPPragmaOperator cPPOperator
+    hi def link c99PPPragmaError   cPPError
+
+  else
+    hi def link cC99Error          cError
+    hi def link c99Type            cC99Error
+    hi def link c99Typedef         cC99Error
+    hi def link c99StorageClass    cC99Error
+    hi def link c99Macro           cC99Error
+    hi def link c99MacroError      cC99Error
+    hi def link cUniversalChar     cC99Error
+    hi def link c99Decimal         cC99Error
+    hi def link c99Hex             cC99Error
+    hi def link c99OctalError      cC99Error
+    hi def link c99Octal           cC99Error
+    hi def link c99Boolean         cC99Error
+    hi def link c99Float           cC99Error
+    hi def link c99Constant        cC99Error
+    hi def link c99PrintFormat     cC99Error
+    hi def link c99ScanFormat      cC99Error
+    hi def link c99Pragma          cC99Error
+    hi def link c99PPPragmaSTDC    cC99Error
+    hi def link c99PPPragmaOperator cC99Error
+    hi def link c99PPPragmaError   cC99Error
+  endif
+endif
+
+if exists("c_c_vim_compatible")
+  if exists("c_gnu")
+    hi def link cGNUType           cType
+    hi def link cGNUStatement      c89Statement
+    hi def link cGNUOperator       cOperator
+    hi def link cGNUStorageClass   cStorageClass
+    hi def link cGNUConstant       cConstant
+  endif
+  if !exists("c_no_utf")
+    hi def link cUniversalChar     cSpecialChar
+  endif
+  hi def link cPosixConstant       cConstant
+  hi def link cMathConstant        cConstant
+
+else
+  hi def link cGNUError            cError
+  hi def link cGNUStatement        cGNUError
+  hi def link cGNUOperator         cGNUError
+  hi def link cGNUType             cGNUError
+  hi def link cGNUStorageClass     cGNUError
+  hi def link cGNUConstant         cGNUError
 endif
 
 let b:current_syntax = "c"
